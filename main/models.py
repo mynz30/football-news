@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+from django.contrib.auth.models import User
 
 class News(models.Model): #models.Model adalah kelas dasar yang digunakan untuk mendefinisikan model dalam Django. #News adalah nama model yang kamu definisikan.
     CATEGORY_CHOICES = [ #CATEGORY_CHOICES adalah tuple yang mendefinisikan pilihan kategori berita yang tersedia.
@@ -19,7 +20,8 @@ class News(models.Model): #models.Model adalah kelas dasar yang digunakan untuk 
     news_views = models.PositiveIntegerField(default=0) #news_views adalah field bertipe PositiveIntegerField yang menyimpan jumlah view berita, dengan nilai default 0.
     created_at = models.DateTimeField(auto_now_add=True) #created_at adalah field bertipe DateTimeField yang otomatis berisi tanggal dan waktu saat data dibuat.
     is_featured = models.BooleanField(default=False) #is_featured adalah field bertipe BooleanField untuk menandai apakah berita ini ditampilkan sebagai berita unggulan.
-    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+
     def __str__(self): #Method __str__ digunakan untuk mengembalikan representasi string dari objek (dalam hal ini judul berita).
         return self.title
     
