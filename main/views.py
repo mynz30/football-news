@@ -1,25 +1,25 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from main.forms import NewsForm
 from main.models import News
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.core import serializers
-from django.contrib.auth.forms import UserCreationForm #adalah impor formulir bawaan yang memudahkan pembuatan formulir pendaftaran pengguna dalam aplikasi web
-from django.contrib import messages
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
-from django.contrib.auth import authenticate, login
+from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 import datetime
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.utils.html import strip_tags
+import requests
+import json
 
 
 @login_required(login_url='/login')
 def show_main(request):
-    filter_type = request.GET.get("filter", "all")  # default 'all'
+    filter_type = request.GET.get("filter", "all")
 
     if filter_type == "all":
         news_list = News.objects.all()
@@ -55,7 +55,6 @@ def show_news(request, id):
     news.increment_views()
     return render(request, "news_detail.html", {'news': news})
 
-# Semua data
 def show_xml(request):
     news_list = News.objects.all()
     xml_data = serializers.serialize("xml", news_list)
@@ -80,7 +79,6 @@ def show_json(request):
 
     return JsonResponse(data, safe=False)
 
-# Data berdasarkan ID
 def show_xml_by_id(request, news_id):
     try:
         news_item = News.objects.get(pk=news_id)
@@ -163,11 +161,11 @@ def delete_news(request, id):
 @csrf_exempt
 @require_POST
 def add_news_entry_ajax(request):
-    title = strip_tags(request.POST.get("title")) # strip HTML tags!
-    content = strip_tags(request.POST.get("content")) # strip HTML tags!
+    title = strip_tags(request.POST.get("title"))
+    content = strip_tags(request.POST.get("content"))
     category = request.POST.get("category")
     thumbnail = request.POST.get("thumbnail")
-    is_featured = request.POST.get("is_featured") == 'on'  # checkbox handling
+    is_featured = request.POST.get("is_featured") == 'on'
     user = request.user
 
     new_news = News(
@@ -181,3 +179,47 @@ def add_news_entry_ajax(request):
     new_news.save()
 
     return HttpResponse(b"CREATED", status=201)
+
+# Tambahkan fungsi baru untuk Flutter
+@csrf_exempt
+def create_news_flutter(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        title = strip_tags(data.get("title", ""))
+        content = strip_tags(data.get("content", ""))
+        category = data.get("category", "")
+        thumbnail = data.get("thumbnail", "")
+        is_featured = data.get("is_featured", False)
+        user = request.user
+        
+        new_news = News(
+            title=title, 
+            content=content,
+            category=category,
+            thumbnail=thumbnail,
+            is_featured=is_featured,
+            user=user
+        )
+        new_news.save()
+        
+        return JsonResponse({"status": "success"}, status=200)
+    else:
+        return JsonResponse({"status": "error"}, status=401)
+
+def proxy_image(request):
+    image_url = request.GET.get('url')
+    if not image_url:
+        return HttpResponse('No URL provided', status=400)
+    
+    try:
+        # Fetch image from external source
+        response = requests.get(image_url, timeout=10)
+        response.raise_for_status()
+        
+        # Return the image with proper content type
+        return HttpResponse(
+            response.content,
+            content_type=response.headers.get('Content-Type', 'image/jpeg')
+        )
+    except requests.RequestException as e:
+        return HttpResponse(f'Error fetching image: {str(e)}', status=500)
