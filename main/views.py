@@ -60,8 +60,9 @@ def show_xml(request):
     xml_data = serializers.serialize("xml", news_list)
     return HttpResponse(xml_data, content_type="application/xml")
 
+# PERBAIKAN #1: Update show_json() untuk include user_username
 def show_json(request):
-    news_list = News.objects.all()
+    news_list = News.objects.select_related('user').all()  # FIX: Add select_related untuk optimize query
     data = [
         {
             'id': str(news.id),
@@ -73,6 +74,7 @@ def show_json(request):
             'created_at': news.created_at.isoformat() if news.created_at else None,
             'is_featured': news.is_featured,
             'user_id': news.user_id,
+            'user_username': news.user.username if news.user else None,  # FIX: Add user_username
         }
         for news in news_list
     ]
@@ -100,7 +102,7 @@ def show_json_by_id(request, news_id):
             'created_at': news.created_at.isoformat() if news.created_at else None,
             'is_featured': news.is_featured,
             'user_id': news.user_id,
-            'user_username': news.user.username if news.user_id else None,
+            'user_username': news.user.username if news.user else None,
         }
         return JsonResponse(data)
     except News.DoesNotExist:
@@ -180,7 +182,7 @@ def add_news_entry_ajax(request):
 
     return HttpResponse(b"CREATED", status=201)
 
-# Tambahkan fungsi baru untuk Flutter
+# Fungsi untuk Flutter - Create News
 @csrf_exempt
 def create_news_flutter(request):
     if request.method == 'POST':
@@ -206,6 +208,7 @@ def create_news_flutter(request):
     else:
         return JsonResponse({"status": "error"}, status=401)
 
+# Fungsi untuk proxy image
 def proxy_image(request):
     image_url = request.GET.get('url')
     if not image_url:
